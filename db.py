@@ -25,3 +25,8 @@ async def get_or_create(async_sess, model, **kwargs):
                 sess.add(instance)
                 sess.commit()
                 return instance
+
+
+async def get_db_ready():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
