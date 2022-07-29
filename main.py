@@ -1,52 +1,27 @@
-import aiogram
+from datetime import datetime
+
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor
 
 from bot_utils import *
 from aiogram import dispatcher
 import config
+from bot_utils import get_courses_keyboard, get_menu_keyboard, get_notification_keyboard, restart_keyboard, close
+from db import User, get_or_create, engine, get_db_ready
 from states import Registration, Menu
 from texts import Texts
 
+from notification import SimpleNotificationSender, Notification
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
+
 storage = MemoryStorage()
-bot = aiogram.Bot(token=config.TELEGRAM_TOKEN)
+bot = aiogram.Bot(token=config.TELEGRAM_TOKEN, parse_mode=aiogram.types.ParseMode.MARKDOWN_V2)
+async_sessionmaker = sessionmaker(
+    engine, expire_on_commit=False, class_=AsyncSession
+)
+bot["db"] = async_sessionmaker
 dp = dispatcher.Dispatcher(bot, storage=storage)
-
-
-def get_courses_keyboard():  # TODO
-    # Get keyboard with buttons from config.courses
-    keyboard = aiogram.types.ReplyKeyboardMarkup()
-    for course in config.courses:
-        keyboard.add(aiogram.types.KeyboardButton(course))
-    return keyboard
-
-
-def get_menu_keyboard():
-    keyboard = aiogram.types.ReplyKeyboardMarkup()
-    keyboard.add(aiogram.types.KeyboardButton(config.menu_settings))
-    keyboard.add(aiogram.types.KeyboardButton(config.menu_notification))
-    keyboard.add(aiogram.types.KeyboardButton(config.menu_pair_call))
-    return keyboard
-
-
-def get_user_settings(from_user):
-    pass
-
-
-def get_notification_keyboard(from_user):
-    keyboard = aiogram.types.ReplyKeyboardMarkup()
-    user_settings = get_user_settings(from_user)
-    keyboard.add(aiogram.types.KeyboardButton("✅ Уведомлять о важный событиях"))
-    keyboard.add(aiogram.types.KeyboardButton("✅ Уведомлять о регулярных событиях"))
-    keyboard.add(aiogram.types.KeyboardButton("❌ Отправлять дополнительную информацию о событияъ событиях"))
-    keyboard.add(aiogram.types.KeyboardButton("◀ В меню"))
-    return keyboard
-
-
-def restart_keyboard():
-    keyboard = aiogram.types.ReplyKeyboardMarkup()
-    keyboard.add(aiogram.types.KeyboardButton(config.settings_restart))
-    return keyboard
 
 
 @dp.message_handler(commands=['start'])
@@ -54,6 +29,7 @@ async def cmd_start(message: aiogram.types.Message):
     await send_message(message.from_id, Texts.start_1, bot)
     await message.reply(Texts.start_select_course, reply_markup=get_courses_keyboard())
     await Registration.select_course.set()
+    user = await get_or_create(bot.get("db"), User, telegram_id=message.from_id, course=None)
 
 
 @dp.message_handler(state=Registration.select_course)
@@ -120,6 +96,28 @@ async def cmd_restart(message: aiogram.types.Message, state):
     await cmd_start(message)
 
 
-if __name__ == "__main__":
+async def notify(repeat_in: int, notification_sender: SimpleNotificationSender):
+    async_sess = bot.get("db")
+    while True:
+        await asyncio.sleep(repeat_in)
+        with async_sess() as sess:
+            with sess.begin():
+                for notification in notification_sender.current_notifications():
+                    users = sess.select(User).where(User.notification_mode <= notification.mode)
+                    for user in users:
+                        await send_message(user.id, str(notification), bot)
+
+
+if __name__ == '__main__':
+    sender = SimpleNotificationSender()
+    sender.add_notification(Notification(title="Привет", message="Привет мир", time=datetime.now(), important_level=2))
+    # TODO !!!! ГЕНЕРАЦИЯ ТЕСТОВЫХ ДАННЫХ ДЛЯ ПРОВЕРКИ _ УБРАТЬ!!!!
+    loop = asyncio.get_event_loop()
+    loop.create_task(notify(30, sender))  # TODO 5 min
+    loop.create_task(get_db_ready())
     waiting_for_pair_call = None
-    executor.start_polling(dp, skip_updates=True)
+
+    try:
+        executor.start_polling(dp, skip_updates=True)
+    finally:
+        close(loop, dp, bot)
