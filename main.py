@@ -5,6 +5,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor
 from sqlalchemy.future import select
 
+import texts
 from bot_utils import *
 from aiogram import dispatcher
 import config
@@ -38,7 +39,7 @@ async def cmd_start(message: aiogram.types.Message):
 @dp.message_handler(state=Registration.select_course)
 async def course_selected(message: aiogram.types.Message, state):
     # TODO Save user course
-    if message.text in config.courses:
+    if message.text in texts.courses:
         await send_message(message.from_id, Texts.registration_succes + message.text, bot)
         await message.reply(Texts.use_menu_help, reply_markup=get_menu_keyboard())
         user = get_or_create(bot.get("db"), User, telegram_id=message.from_id, commit=False)
@@ -55,7 +56,7 @@ async def cmd_iam_administrator(message: aiogram.types.Message, state):
                        bot)
 
 
-@dp.message_handler(text=config.menu_pair_call, state=Menu.in_menu)
+@dp.message_handler(text=texts.menu_pair_call, state=Menu.in_menu)
 async def cmd_pair_call(message: aiogram.types.Message, state):
     global waiting_for_pair_call  # TODO тут может быть какая то хуйня с асинхронностью
     if message.from_user == waiting_for_pair_call:
@@ -78,7 +79,7 @@ async def cmd_kick_call(message: aiogram.types.Message, state):
         await send_message(message.from_id, Texts.you_are_not_in_queue, bot)
 
 
-@dp.message_handler(text=config.menu_notification, state=Menu.in_menu)
+@dp.message_handler(text=texts.menu_notification, state=Menu.in_menu)
 async def cmd_notification(message: aiogram.types.Message, state):
     await message.reply(Texts.notification_help, reply_markup=get_notification_keyboard(message.from_user))
 
@@ -89,13 +90,13 @@ async def force_menu(message, state):
     await Menu.in_menu.set()
 
 
-@dp.message_handler(text=config.menu_settings, state=Menu.in_menu)
+@dp.message_handler(text=texts.menu_settings, state=Menu.in_menu)
 async def cmd_settings(message: aiogram.types.Message, state):
     await message.reply(Texts.settings_help, reply_markup=restart_keyboard())
     await Menu.in_settings.set()
 
 
-@dp.message_handler(text=config.settings_restart, state=Menu.in_settings)
+@dp.message_handler(text=texts.settings_restart, state=Menu.in_settings)
 async def cmd_restart(message: aiogram.types.Message, state):
     await send_message(message.from_id, Texts.select_course_again, bot)
     await Registration.select_course.set()

@@ -5,6 +5,7 @@ from aiogram import exceptions
 from logging import getLogger
 
 import config
+import texts
 
 log = getLogger(__name__)
 
@@ -46,16 +47,16 @@ def get_user_settings(from_user):  # TODO
 def get_courses_keyboard():  # TODO
     # Get keyboard with buttons from config.courses
     keyboard = aiogram.types.ReplyKeyboardMarkup()
-    for course in config.courses:
+    for course in texts.courses:
         keyboard.add(aiogram.types.KeyboardButton(course))
     return keyboard
 
 
 def get_menu_keyboard():
     keyboard = aiogram.types.ReplyKeyboardMarkup()
-    keyboard.add(aiogram.types.KeyboardButton(config.menu_settings))
-    keyboard.add(aiogram.types.KeyboardButton(config.menu_notification))
-    keyboard.add(aiogram.types.KeyboardButton(config.menu_pair_call))
+    keyboard.add(aiogram.types.KeyboardButton(texts.menu_settings))
+    keyboard.add(aiogram.types.KeyboardButton(texts.menu_notification))
+    keyboard.add(aiogram.types.KeyboardButton(texts.menu_pair_call))
     return keyboard
 
 
@@ -71,7 +72,7 @@ def get_notification_keyboard(from_user):
 
 def restart_keyboard():
     keyboard = aiogram.types.ReplyKeyboardMarkup()
-    keyboard.add(aiogram.types.KeyboardButton(config.settings_restart))
+    keyboard.add(aiogram.types.KeyboardButton(texts.settings_restart))
     return keyboard
 
 
