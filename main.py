@@ -9,7 +9,7 @@ from bot_utils import *
 from aiogram import dispatcher
 import config
 from bot_utils import get_courses_keyboard, get_menu_keyboard, get_notification_keyboard, restart_keyboard, close
-from db import User, get_or_create, engine, get_db_ready
+from db import User, get_or_create, engine
 from states import Registration, Menu
 from texts import Texts
 
@@ -19,10 +19,9 @@ from sqlalchemy.orm import sessionmaker
 
 storage = MemoryStorage()
 bot = aiogram.Bot(token=config.TELEGRAM_TOKEN)  # , parse_mode=aiogram.types.ParseMode.MARKDOWN_V2)
-async_sessionmaker = sessionmaker(
-    engine, expire_on_commit=False, class_=AsyncSession
-)
-bot["db"] = async_sessionmaker
+
+session = sessionmaker(bind=engine)()
+bot["db"] = session
 dp = dispatcher.Dispatcher(bot, storage=storage)
 
 log = logging.getLogger(__name__)
@@ -42,7 +41,9 @@ async def course_selected(message: aiogram.types.Message, state):
     if message.text in config.courses:
         await send_message(message.from_id, Texts.registration_succes + message.text, bot)
         await message.reply(Texts.use_menu_help, reply_markup=get_menu_keyboard())
-        await get_or_create(bot.get("db"), User, telegram_id=message.from_id, course=message.text)
+        user = get_or_create(bot.get("db"), User, telegram_id=message.from_id, commit=False)
+        user.course = message.text
+        bot.get("db").commit()
         await Menu.in_menu.set()
     else:
         await send_message(message.from_id, Texts.no_such_course, bot)
@@ -101,19 +102,19 @@ async def cmd_restart(message: aiogram.types.Message, state):
     await cmd_start(message)
 
 
-async def notify(repeat_in: int, notification_sender: SimpleNotificationSender):
-    log.info("Started notification")
-    async_sess = bot.get("db")
-    while True:
-        async with async_sess() as sess:
-            async with sess.begin():
-                for notification in notification_sender.current_notifications():
-                    users = await sess.execute(
-                        select(User).where(User.notification_mode >= notification.important_level))
-                    for user in users:
-                        log.debug(f"Sending notification to {user.telegram_id}")
-                        await send_message(user.id, str(notification), bot)
-        await asyncio.sleep(repeat_in)
+# async def notify(repeat_in: int, notification_sender: SimpleNotificationSender):
+#     log.info("Started notification")
+#     async_sess = bot.get("db")
+#     while True:
+#         async with async_sess() as sess:
+#             async with sess.begin():
+#                 for notification in notification_sender.current_notifications():
+#                     users = await sess.execute(
+#                         select(User).where(User.notification_mode >= notification.important_level))
+#                     for user in users:
+#                         log.debug(f"Sending notification to {user.telegram_id}")
+#                         await send_message(user.id, str(notification), bot)
+#         await asyncio.sleep(repeat_in)
 
 
 if __name__ == '__main__':
@@ -123,10 +124,9 @@ if __name__ == '__main__':
     # TODO !!!! ГЕНЕРАЦИЯ ТЕСТОВЫХ ДАННЫХ ДЛЯ ПРОВЕРКИ _ УБРАТЬ!!!!
     loop = asyncio.get_event_loop()
     # loop.create_task(notify(30, sender))  # TODO 5 min
-    loop.create_task(get_db_ready())
     waiting_for_pair_call = None
 
     try:
         executor.start_polling(dp, skip_updates=True)
     finally:
-        close(loop, dp, bot)
+        await close(loop, dp, bot)
