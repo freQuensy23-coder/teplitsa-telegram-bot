@@ -1,7 +1,9 @@
+import logging
 from datetime import datetime
 
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor
+from sqlalchemy.future import select
 
 from bot_utils import *
 from aiogram import dispatcher
@@ -16,12 +18,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 storage = MemoryStorage()
-bot = aiogram.Bot(token=config.TELEGRAM_TOKEN, parse_mode=aiogram.types.ParseMode.MARKDOWN_V2)
+bot = aiogram.Bot(token=config.TELEGRAM_TOKEN)  # , parse_mode=aiogram.types.ParseMode.MARKDOWN_V2)
 async_sessionmaker = sessionmaker(
     engine, expire_on_commit=False, class_=AsyncSession
 )
 bot["db"] = async_sessionmaker
 dp = dispatcher.Dispatcher(bot, storage=storage)
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 
 @dp.message_handler(commands=['start'])
@@ -29,7 +34,6 @@ async def cmd_start(message: aiogram.types.Message):
     await send_message(message.from_id, Texts.start_1, bot)
     await message.reply(Texts.start_select_course, reply_markup=get_courses_keyboard())
     await Registration.select_course.set()
-    user = await get_or_create(bot.get("db"), User, telegram_id=message.from_id, course=None)
 
 
 @dp.message_handler(state=Registration.select_course)
@@ -38,6 +42,7 @@ async def course_selected(message: aiogram.types.Message, state):
     if message.text in config.courses:
         await send_message(message.from_id, Texts.registration_succes + message.text, bot)
         await message.reply(Texts.use_menu_help, reply_markup=get_menu_keyboard())
+        await get_or_create(bot.get("db"), User, telegram_id=message.from_id, course=message.text)
         await Menu.in_menu.set()
     else:
         await send_message(message.from_id, Texts.no_such_course, bot)
@@ -97,23 +102,27 @@ async def cmd_restart(message: aiogram.types.Message, state):
 
 
 async def notify(repeat_in: int, notification_sender: SimpleNotificationSender):
+    log.info("Started notification")
     async_sess = bot.get("db")
     while True:
-        await asyncio.sleep(repeat_in)
-        with async_sess() as sess:
-            with sess.begin():
+        async with async_sess() as sess:
+            async with sess.begin():
                 for notification in notification_sender.current_notifications():
-                    users = sess.select(User).where(User.notification_mode <= notification.mode)
+                    users = await sess.execute(
+                        select(User).where(User.notification_mode >= notification.important_level))
                     for user in users:
+                        log.debug(f"Sending notification to {user.telegram_id}")
                         await send_message(user.id, str(notification), bot)
+        await asyncio.sleep(repeat_in)
 
 
 if __name__ == '__main__':
     sender = SimpleNotificationSender()
-    sender.add_notification(Notification(title="Привет", message="Привет мир", time=datetime.now(), important_level=2))
+    sender.add_notification(Notification(title="Привет", message="Привет мир", time=datetime.now(),
+                                         important_level=0))  # TODO ПОдумаь как работают уровни уведомлений
     # TODO !!!! ГЕНЕРАЦИЯ ТЕСТОВЫХ ДАННЫХ ДЛЯ ПРОВЕРКИ _ УБРАТЬ!!!!
     loop = asyncio.get_event_loop()
-    loop.create_task(notify(30, sender))  # TODO 5 min
+    # loop.create_task(notify(30, sender))  # TODO 5 min
     loop.create_task(get_db_ready())
     waiting_for_pair_call = None
 
