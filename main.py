@@ -14,9 +14,10 @@ from db import User, get_or_create, engine
 from states import Registration, Menu
 from texts import Texts
 
-from notification import SimpleNotificationSender, Notification
+from notification import GoogleSheetsNotificationController, AbstractNotificationController
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 storage = MemoryStorage()
 bot = aiogram.Bot(token=config.TELEGRAM_TOKEN)  # , parse_mode=aiogram.types.ParseMode.MARKDOWN_V2)
@@ -84,7 +85,7 @@ async def cmd_notification(message: aiogram.types.Message, state):
     await message.reply(Texts.notification_help, reply_markup=get_notification_keyboard(message.from_user))
 
 
-@dp.message_handler(text="◀ В меню", state="*")
+@dp.message_handler(text=["◀ В меню", "/menu"], state="*")
 async def force_menu(message, state):
     await message.reply(Texts.use_menu_help, reply_markup=get_menu_keyboard())
     await Menu.in_menu.set()
@@ -103,31 +104,21 @@ async def cmd_restart(message: aiogram.types.Message, state):
     await cmd_start(message)
 
 
-# async def notify(repeat_in: int, notification_sender: SimpleNotificationSender):
-#     log.info("Started notification")
-#     async_sess = bot.get("db")
-#     while True:
-#         async with async_sess() as sess:
-#             async with sess.begin():
-#                 for notification in notification_sender.current_notifications():
-#                     users = await sess.execute(
-#                         select(User).where(User.notification_mode >= notification.important_level))
-#                     for user in users:
-#                         log.debug(f"Sending notification to {user.telegram_id}")
-#                         await send_message(user.id, str(notification), bot)
-#         await asyncio.sleep(repeat_in)
+async def notify(notification_controller: AbstractNotificationController):
+    log.info("Started notification")
+    sess = bot.get("db")
+    for notification in notification_controller.current_notifications():
+        users = sess.query(User).filter().all() # TODO логика проверки уровня уведомления
+        for user in users:
+            log.debug(f"Sending notification to {user.telegram_id}")
+            await send_message(user.telegram_id, str(notification), bot)
 
 
 if __name__ == '__main__':
-    sender = SimpleNotificationSender()
-    sender.add_notification(Notification(title="Привет", message="Привет мир", time=datetime.now(),
-                                         important_level=0))  # TODO ПОдумаь как работают уровни уведомлений
-    # TODO !!!! ГЕНЕРАЦИЯ ТЕСТОВЫХ ДАННЫХ ДЛЯ ПРОВЕРКИ _ УБРАТЬ!!!!
-    loop = asyncio.get_event_loop()
-    # loop.create_task(notify(30, sender))  # TODO 5 min
+    scheduler = AsyncIOScheduler()
+    notification_controller = GoogleSheetsNotificationController()
+    scheduler.add_job(notify, 'interval', seconds=12, args=[notification_controller])
+    scheduler.start()
     waiting_for_pair_call = None
 
-    try:
-        executor.start_polling(dp, skip_updates=True)
-    finally:
-        await close(loop, dp, bot)
+    executor.start_polling(dp, skip_updates=True)
