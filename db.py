@@ -2,7 +2,7 @@ from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 Base = declarative_base()
-engine = create_engine('sqlite:///test.sqlite3', echo=True)
+engine = create_engine('sqlite:///test.sqlite3?check_same_thread=False', echo=True) # TODO Что то придумать с проверкой потока в планировщике задач
 
 
 class User(Base):
