@@ -66,13 +66,14 @@ def get_notification_keyboard(from_user):
     keyboard.add(aiogram.types.KeyboardButton("✅ Уведомлять о важный событиях"))
     keyboard.add(aiogram.types.KeyboardButton("✅ Уведомлять о регулярных событиях"))
     keyboard.add(aiogram.types.KeyboardButton("❌ Отправлять дополнительную информацию о событияъ событиях"))
-    keyboard.add(aiogram.types.KeyboardButton("◀ В меню"))
+    keyboard.add(aiogram.types.KeyboardButton(texts.menu))
     return keyboard
 
 
 def restart_keyboard():
     keyboard = aiogram.types.ReplyKeyboardMarkup()
     keyboard.add(aiogram.types.KeyboardButton(texts.settings_restart))
+    keyboard.add(aiogram.types.KeyboardButton(texts.menu))
     return keyboard
 
 
