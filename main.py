@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 
+import aiogram.types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor
 from sqlalchemy.future import select
@@ -57,9 +58,9 @@ async def cmd_iam_administrator(message: aiogram.types.Message, state):
                        bot)
 
 
-@dp.message_handler(text=texts.menu_pair_call, state=Menu.in_menu)
-async def cmd_pair_call(message: aiogram.types.Message, state):
-    global waiting_for_pair_call  # TODO тут может быть какая то хуйня с асинхронностью
+@dp.message_handler(text=Texts.global_pair_call_button, state=Menu.select_group_call_type)
+async def cmd_global_call(message: aiogram.types.Message, state):
+    global waiting_for_pair_call  # TODO тут может быть какая то хуйня с асинхронностью, обдумать на трезвую голову
     if message.from_user == waiting_for_pair_call:
         await send_message(message.from_id,
                            Texts.pair_call_already_created,
@@ -68,6 +69,11 @@ async def cmd_pair_call(message: aiogram.types.Message, state):
         waiting_for_pair_call = message.from_user
         await send_message(message.from_id, Texts.pair_call_created_success, bot)
         await message.reply(Texts.leave_call_queue_help)
+
+
+@dp.message_handler(text=texts.menu_pair_call, state=Menu.in_menu)
+async def pair_call_type_selector(message: aiogram.types.Message, state):
+    await message.reply(Texts.select_group_call_type, reply_markup=get_call_type_keyboard(message.from_user))
 
 
 @dp.message_handler(commands=['kick_call'], state='*')
@@ -83,6 +89,7 @@ async def cmd_kick_call(message: aiogram.types.Message, state):
 @dp.message_handler(text=texts.menu_notification, state=Menu.in_menu)
 async def cmd_notification(message: aiogram.types.Message, state):
     await message.reply(Texts.notification_help, reply_markup=get_notification_keyboard(message.from_user))
+
 
 
 @dp.message_handler(text=["◀ В меню", "/menu"], state="*")
@@ -108,7 +115,7 @@ async def notify(notification_controller: AbstractNotificationController):
     log.info("Started notification")
     sess = bot.get("db")
     for notification in notification_controller.current_notifications():
-        users = sess.query(User).filter().all() # TODO логика проверки уровня уведомления
+        users = sess.query(User).filter().all()  # TODO логика проверки уровня уведомления
         for user in users:
             log.debug(f"Sending notification to {user.telegram_id}")
             await send_message(user.telegram_id, str(notification), bot)
