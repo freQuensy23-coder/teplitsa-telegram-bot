@@ -71,6 +71,13 @@ def get_notification_keyboard(from_user):
     return keyboard
 
 
+def get_call_type_keyboard(from_user):
+    keyword = aiogram.types.ReplyKeyboardMarkup()
+    keyword.add(aiogram.types.KeyboardButton(texts.Texts.global_pair_call_button))
+    keyword.add(aiogram.types.KeyboardButton(texts.Texts.course_pair_call_button))
+    keyword.add(aiogram.types.KeyboardButton(texts.menu))
+    return keyword
+
 def restart_keyboard():
     keyboard = aiogram.types.ReplyKeyboardMarkup()
     keyboard.add(aiogram.types.KeyboardButton(texts.settings_restart))
