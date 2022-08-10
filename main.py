@@ -10,7 +10,7 @@ from bot_utils import *
 from aiogram import dispatcher
 import config
 from bot_utils import get_courses_keyboard, get_menu_keyboard, get_notification_keyboard, restart_keyboard, close
-from db import User, get_or_create, engine
+from db import User, get_or_create, engine, get_course_by_name, get_all_courses
 from states import Registration, Menu
 from texts import Texts
 
@@ -39,12 +39,11 @@ async def cmd_start(message: aiogram.types.Message):
 
 @dp.message_handler(state=Registration.select_course)
 async def course_selected(message: aiogram.types.Message, state):
-    # TODO Save user course
-    if message.text in texts.courses:
+    if message.text in [c.name for c in get_all_courses()]:
         await send_message(message.from_id, Texts.registration_succes + message.text, bot)
         await message.reply(Texts.use_menu_help, reply_markup=get_menu_keyboard())
         user = get_or_create(bot.get("db"), User, telegram_id=message.from_id, commit=False)
-        user.course = message.text
+        user.course = get_course_by_name(bot.get("db"), message.text)
         bot.get("db").commit()
         await Menu.in_menu.set()
     else:

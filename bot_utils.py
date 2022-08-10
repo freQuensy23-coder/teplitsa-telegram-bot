@@ -6,6 +6,7 @@ from logging import getLogger
 
 import config
 import texts
+from db import get_all_courses
 
 log = getLogger(__name__)
 
@@ -44,11 +45,11 @@ def get_user_settings(from_user):  # TODO
     pass
 
 
-def get_courses_keyboard():  # TODO
-    # Get keyboard with buttons from config.courses
+def get_courses_keyboard(user=None):
+    """Get keyboard with user courses. If user is None, then return all courses"""
     keyboard = aiogram.types.ReplyKeyboardMarkup()
-    for course in texts.courses:
-        keyboard.add(aiogram.types.KeyboardButton(course))
+    for course in get_all_courses():
+        keyboard.add(aiogram.types.KeyboardButton(course.name))
     return keyboard
 
 
