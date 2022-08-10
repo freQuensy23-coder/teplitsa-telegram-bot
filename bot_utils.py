@@ -5,7 +5,7 @@ from aiogram import exceptions
 from logging import getLogger
 
 import config
-import texts
+from texts import Buttons
 from db import get_all_courses
 
 log = getLogger(__name__)
@@ -55,9 +55,9 @@ def get_courses_keyboard(user=None):
 
 def get_menu_keyboard():
     keyboard = aiogram.types.ReplyKeyboardMarkup()
-    keyboard.add(aiogram.types.KeyboardButton(texts.menu_settings))
-    keyboard.add(aiogram.types.KeyboardButton(texts.menu_notification))
-    keyboard.add(aiogram.types.KeyboardButton(texts.menu_pair_call))
+    keyboard.add(aiogram.types.KeyboardButton(Buttons.Menu.menu_settings))
+    keyboard.add(aiogram.types.KeyboardButton(Buttons.Menu.menu_notification))
+    keyboard.add(aiogram.types.KeyboardButton(Buttons.Menu.menu_pair_call))
     return keyboard
 
 
@@ -67,21 +67,22 @@ def get_notification_keyboard(from_user):
     keyboard.add(aiogram.types.KeyboardButton("✅ Уведомлять о важный событиях"))
     keyboard.add(aiogram.types.KeyboardButton("✅ Уведомлять о регулярных событиях"))
     keyboard.add(aiogram.types.KeyboardButton("❌ Отправлять дополнительную информацию о событияъ событиях"))
-    keyboard.add(aiogram.types.KeyboardButton(texts.menu))
+    keyboard.add(aiogram.types.KeyboardButton(Buttons.Menu.menu))
     return keyboard
 
 
 def get_call_type_keyboard(from_user):
     keyword = aiogram.types.ReplyKeyboardMarkup()
-    keyword.add(aiogram.types.KeyboardButton(texts.Texts.global_pair_call_button))
-    keyword.add(aiogram.types.KeyboardButton(texts.Texts.course_pair_call_button))
-    keyword.add(aiogram.types.KeyboardButton(texts.menu))
+    keyword.add(aiogram.types.KeyboardButton(Buttons.PairCall.global_pair_call_button))
+    keyword.add(aiogram.types.KeyboardButton(Buttons.PairCall.course_pair_call_button))
+    keyword.add(aiogram.types.KeyboardButton(Buttons.Menu.menu))
     return keyword
+
 
 def restart_keyboard():
     keyboard = aiogram.types.ReplyKeyboardMarkup()
-    keyboard.add(aiogram.types.KeyboardButton(texts.settings_restart))
-    keyboard.add(aiogram.types.KeyboardButton(texts.menu))
+    keyboard.add(aiogram.types.KeyboardButton(Buttons.Settings.settings_restart))
+    keyboard.add(aiogram.types.KeyboardButton(Buttons.Menu.menu))
     return keyboard
 
 
