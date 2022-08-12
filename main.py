@@ -19,7 +19,7 @@ from sqlalchemy.orm import sessionmaker
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 storage = MemoryStorage()
-bot = aiogram.Bot(token=config.TELEGRAM_TOKEN)  # , parse_mode=aiogram.types.ParseMode.MARKDOWN_V2)
+bot = aiogram.Bot(token=config.TELEGRAM_TOKEN, parse_mode=aiogram.types.ParseMode.HTML)
 
 session = sessionmaker(bind=engine)()
 bot["db"] = session
