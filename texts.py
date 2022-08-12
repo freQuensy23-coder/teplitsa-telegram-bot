@@ -56,8 +56,9 @@ class Messages:
 
         @staticmethod
         def contact_user_to_pair_call(telegram_user):
-            return f"Для вас нашлась пара на парный созвон -  @{telegram_user.username}. Используйте [данную](" \
-                   f"https://meet.google.com/new)  комнату в google meet. Но вначале напишите ему личное сообщение и " \
+            return f"Для вас нашлась пара на парный созвон -  @{telegram_user.username}." \
+                   f" Используйте <a href='https://vk.cc/cfKNE3'>данную</a>" \
+                   f"  комнату в google meet. Но вначале напишите ему личное сообщение и " \
                    f"назначте время встречи "
 
     @dataclasses.dataclass
