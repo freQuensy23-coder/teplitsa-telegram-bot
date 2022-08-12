@@ -1,3 +1,4 @@
+import sqlalchemy.exc
 from sqlalchemy import create_engine, Column, Integer, String, Table, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship, backref
 
@@ -23,7 +24,7 @@ class Course(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
     description = Column(String)
-
+    
 
 def get_course_by_name(session, name):
     return session.query(Course).filter_by(name=name).first()
@@ -35,16 +36,23 @@ def get_all_courses(session=None):
     return session.query(Course).all()
 
 
-def get_or_create(session, model, commit=True, **kwargs):
+def get_or_create(session=None, model=None, commit=True, create=True, **kwargs):
+    """Получить модель model через сессию session. Если модель не найдена и указан флаг create, то создать ее и
+    вернуть ее. Если commit за обновить базу. """
+    if session is None:
+        session = sessionmaker(bind=engine)()
     instance = session.query(model).filter_by(**kwargs).first()
     if instance:
         return instance
-    else:
+    elif create:
         instance = model(**kwargs)
         session.add(instance)
         if commit:
             session.commit()
         return instance
-
+    raise sqlalchemy.exc.NoResultFound()
 
 Base.metadata.create_all(engine)
+
+if __name__ == "__main__":
+    course = get_or_create(model=Course, name='Test course 1', description='Python course')

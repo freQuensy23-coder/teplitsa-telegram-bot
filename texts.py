@@ -23,6 +23,7 @@ class Messages:
                                     "/kick_call "
         pair_call_created_success = "Вы отправили запрос на парный созвон. Ожидайте ответа"
         leave_call_queue_help = "Выйти из очереди на парный созвон можно написав /kick_call"
+        select_course = "Выберете курс из списка на клавиатуре"
         you_are_not_in_queue = "Вы не находитесь в очереди на парный созвон"
         leave_call_queue_success = "Вы вышли из очереди на парный созвон"
         what_is_pair_call_help = """Что такое парный созвон?

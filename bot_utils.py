@@ -6,7 +6,7 @@ from logging import getLogger
 
 import config
 from texts import Buttons
-from db import get_all_courses
+from db import get_all_courses, User, get_or_create
 
 log = getLogger(__name__)
 
@@ -45,11 +45,21 @@ def get_user_settings(from_user):  # TODO
     pass
 
 
-def get_courses_keyboard(user=None):
+def get_courses_keyboard(user=None, session=None):
     """Get keyboard with user courses. If user is None, then return all courses"""
     keyboard = aiogram.types.ReplyKeyboardMarkup()
-    for course in get_all_courses():
-        keyboard.add(aiogram.types.KeyboardButton(course.name))
+    if user is None:
+        courses = get_all_courses()
+        log.debug(f"Get all courses for user: {user}, courses: {courses}")
+        if not courses:
+            raise ValueError("No courses found")
+        for course in courses:
+            keyboard.add(aiogram.types.KeyboardButton(course.name))
+    else:
+        if isinstance(user, aiogram.types.User):
+            user = get_or_create(session=session, model=User, create=False, telegram_id=user.id)
+        for course in user.courses:
+            keyboard.add(aiogram.types.KeyboardButton(course.name))
     return keyboard
 
 

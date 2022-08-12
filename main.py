@@ -1,10 +1,8 @@
 import logging
 from datetime import datetime
 
-import aiogram.types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor
-from sqlalchemy.future import select
 
 import texts
 from bot_utils import *
@@ -44,7 +42,7 @@ async def course_selected(message: aiogram.types.Message, state):
         await send_message(message.from_id, Messages.Registration.registration_success + message.text, bot)
         await message.reply(Messages.Menu.use_menu_help, reply_markup=get_menu_keyboard())
         user = get_or_create(bot.get("db"), User, telegram_id=message.from_id, commit=False)
-        user.course = get_course_by_name(bot.get("db"), message.text)
+        user.courses.append(get_course_by_name(bot.get("db"), message.text))
         bot.get("db").commit()
         await Menu.in_menu.set()
     else:
@@ -55,6 +53,13 @@ async def course_selected(message: aiogram.types.Message, state):
 async def cmd_iam_administrator(message: aiogram.types.Message, state):
     await send_message(message.from_id, f"Вы успешно зарегестрировались как администратор. Текущее состояние - {state}",
                        bot)
+
+
+@dp.message_handler(text=texts.Buttons.Menu.menu_pair_call, state=Menu.in_menu)
+async def pair_call_type_selector(message: aiogram.types.Message, state):
+    await Menu.select_group_call_type.set()
+    await message.reply(Messages.PairCall.select_group_call_type,
+                        reply_markup=get_call_type_keyboard(message.from_user))
 
 
 @dp.message_handler(text=texts.Buttons.PairCall.global_pair_call_button, state=Menu.select_group_call_type)
@@ -70,10 +75,12 @@ async def cmd_global_call(message: aiogram.types.Message, state):
         await message.reply(Messages.PairCall.leave_call_queue_help)
 
 
-@dp.message_handler(text=texts.Buttons.Menu.menu_pair_call, state=Menu.in_menu)
-async def pair_call_type_selector(message: aiogram.types.Message, state):
-    await Menu.select_group_call_type.set()
-    await message.reply(Messages.PairCall.select_group_call_type, reply_markup=get_call_type_keyboard(message.from_user))
+@dp.message_handler(
+    text=[texts.Buttons.PairCall.__dict__[but] for but in dir(texts.Buttons.PairCall) if but[:2] != "__" and but[-2:] != "__"],
+    state=Menu.select_group_call_type)
+async def select_call_type(message: aiogram.types.Message, state):
+    await message.reply(Messages.PairCall.select_course, reply_markup=get_courses_keyboard(message.from_user,
+                                                                                           session=bot.get("db")))
 
 
 @dp.message_handler(commands=['kick_call'], state='*')
