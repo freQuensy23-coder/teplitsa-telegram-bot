@@ -46,6 +46,9 @@ async def course_selected(message: aiogram.types.Message, state):
         user.courses.append(get_course_by_name(bot.get("db"), message.text))
         bot.get("db").commit()
     elif message.text == Buttons.Registration.start:
+        user = get_or_create(bot.get("db"), User, telegram_id=message.from_id, commit=True)
+        if not user.courses:
+            await send_message(message.from_id, Messages.Registration.no_course_selected, bot)
         await message.reply(Messages.Menu.use_menu_help, reply_markup=get_menu_keyboard())
         await Menu.in_menu.set()
     else:
@@ -83,8 +86,10 @@ async def cmd_global_call(message: aiogram.types.Message, state):
           but[:2] != "__" and but[-2:] != "__"],
     state=Menu.select_group_call_type)
 async def select_call_type(message: aiogram.types.Message, state):
-    await message.reply(Messages.PairCall.select_course, reply_markup=get_courses_keyboard(message.from_user,
-                                                                                           session=bot.get("db")))
+    await message.reply(Messages.PairCall.select_course,
+                        reply_markup=get_courses_keyboard(message.from_user,
+                                                          session=bot.get("db"),
+                                                          additional_buttons=[Buttons.Menu.menu]))
     await Menu.choose_group_call_course.set()
 
 

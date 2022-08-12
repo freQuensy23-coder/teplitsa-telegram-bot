@@ -11,6 +11,8 @@ class Messages:
         start_select_course = "После того как выбрали все курсы, нажмите на кнопку начать."
         registration_success = "Спасибо! Теперь мы знаем, что вы проходите курс "
         no_such_course = "Такого курса не существует"
+        no_course_selected = "Вы не выбрали ни одного курса. Вы сможете добавить их позже нажав перезапустить бота в " \
+                             "настройках. "
 
     @dataclasses.dataclass
     class Menu:
