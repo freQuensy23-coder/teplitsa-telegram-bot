@@ -24,7 +24,9 @@ class Course(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
     description = Column(String)
-    
+    user_id = Column(Integer, ForeignKey('user.id'))
+    user = relationship('User')
+
 
 def get_course_by_name(session, name):
     return session.query(Course).filter_by(name=name).first()
@@ -52,7 +54,16 @@ def get_or_create(session=None, model=None, commit=True, create=True, **kwargs):
         return instance
     raise sqlalchemy.exc.NoResultFound()
 
+
+def get_courses_user_queued(session=None, telegram_id=None):
+    if session is None:
+        session = sessionmaker(bind=engine)()
+    if telegram_id is not None:
+        return session.query(Course).join(User).filter(User.telegram_id == telegram_id).all()
+
+
 Base.metadata.create_all(engine)
 
 if __name__ == "__main__":
-    course = get_or_create(model=Course, name='Test course 1', description='Python course')
+    for i in range(20):
+        course = get_or_create(model=Course, name=f'Test course {i}', description=f'Course description {i}')

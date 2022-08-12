@@ -5,7 +5,7 @@ from aiogram import exceptions
 from logging import getLogger
 
 import config
-from texts import Buttons
+from texts import Buttons, Commands
 from db import get_all_courses, User, get_or_create
 
 log = getLogger(__name__)
@@ -85,6 +85,7 @@ def get_call_type_keyboard(from_user):
     keyword = aiogram.types.ReplyKeyboardMarkup()
     keyword.add(aiogram.types.KeyboardButton(Buttons.PairCall.global_pair_call_button))
     keyword.add(aiogram.types.KeyboardButton(Buttons.PairCall.course_pair_call_button))
+    keyword.add(aiogram.types.KeyboardButton(Commands.kick_all_calls))
     keyword.add(aiogram.types.KeyboardButton(Buttons.Menu.menu))
     return keyword
 

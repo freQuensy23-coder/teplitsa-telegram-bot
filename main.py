@@ -9,7 +9,7 @@ from bot_utils import *
 from aiogram import dispatcher
 import config
 from bot_utils import get_courses_keyboard, get_menu_keyboard, get_notification_keyboard, restart_keyboard, close
-from db import User, get_or_create, engine, get_course_by_name, get_all_courses
+from db import User, get_or_create, engine, get_course_by_name, get_all_courses, Course, get_courses_user_queued
 from states import Registration, Menu
 from texts import Messages
 
@@ -76,21 +76,55 @@ async def cmd_global_call(message: aiogram.types.Message, state):
 
 
 @dp.message_handler(
-    text=[texts.Buttons.PairCall.__dict__[but] for but in dir(texts.Buttons.PairCall) if but[:2] != "__" and but[-2:] != "__"],
+    text=[texts.Buttons.PairCall.__dict__[but] for but in dir(texts.Buttons.PairCall) if
+          but[:2] != "__" and but[-2:] != "__"],
     state=Menu.select_group_call_type)
 async def select_call_type(message: aiogram.types.Message, state):
     await message.reply(Messages.PairCall.select_course, reply_markup=get_courses_keyboard(message.from_user,
                                                                                            session=bot.get("db")))
+    await Menu.choose_group_call_course.set()
 
 
-@dp.message_handler(commands=['kick_call'], state='*')
+@dp.message_handler(text=[c.name for c in get_all_courses()], state=Menu.choose_group_call_course)
+async def choose_course(message: aiogram.types.Message, state):
+    user = get_or_create(bot.get("db"), User, telegram_id=message.from_id, create=False)
+    if message.text in [c.name for c in user.courses]:
+        course = get_course_by_name(bot.get("db"), message.text)
+        if course.user_id is None:
+            course.user_id = user.id
+            session.add(course)
+            session.commit()
+            await send_message(message.from_id, Messages.PairCall.pair_call_created_success, bot)
+            await Menu.in_menu.set()
+            await message.reply(Messages.Menu.use_menu_help, reply_markup=get_menu_keyboard())
+        else:
+            await Menu.in_menu.set()
+            await message.reply(Messages.PairCall.pair_call_created_success, reply_markup=get_menu_keyboard())
+            await send_message(
+                get_or_create(session=bot.get("db"), create=False, model=User, id=course.user_id).telegram_id,
+                Messages.PairCall.contact_user_to_pair_call(message.from_user), bot)
+    else:
+        await message.reply(texts.Messages.PairCall.not_reg_to_such_course, reply_markup=get_menu_keyboard())
+        await Menu.in_menu.set()
+
+
+@dp.message_handler(commands=[Commands.kick_all_calls[1:]], state='*')
 async def cmd_kick_call(message: aiogram.types.Message, state):
+    """Leave all pait calls"""
     global waiting_for_pair_call
     if message.from_user == waiting_for_pair_call:
         waiting_for_pair_call = None
         await send_message(message.from_id, Messages.PairCall.leave_call_queue_success, bot)
     else:
-        await send_message(message.from_id, Messages.PairCall.you_are_not_in_queue, bot)
+        courses = get_courses_user_queued(bot.get("db"), message.from_id)
+        if courses:
+            for c in courses:
+                c.user_id = None
+                session.add(c)
+                await send_message(message.from_id, Messages.PairCall.leave_local_course_success(c.name), bot)
+            session.commit()
+            await Menu.in_menu.set()
+    await force_menu(message, state)
 
 
 @dp.message_handler(text=texts.Buttons.Menu.menu_notification, state=Menu.in_menu)
