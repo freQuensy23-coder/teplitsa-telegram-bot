@@ -32,7 +32,9 @@ log.setLevel(logging.DEBUG)
 @dp.message_handler(commands=['start'])
 async def cmd_start(message: aiogram.types.Message):
     await send_message(message.from_id, Messages.Registration.start_1, bot)
-    await message.reply(Messages.Registration.start_select_course, reply_markup=get_courses_keyboard())
+    await message.reply(Messages.Registration.start_select_course,
+                        reply_markup=get_courses_keyboard(session=bot.get("db"),
+                                                          additional_buttons=[Buttons.Registration.start]))
     await Registration.select_course.set()
 
 
@@ -40,10 +42,11 @@ async def cmd_start(message: aiogram.types.Message):
 async def course_selected(message: aiogram.types.Message, state):
     if message.text in [c.name for c in get_all_courses()]:
         await send_message(message.from_id, Messages.Registration.registration_success + message.text, bot)
-        await message.reply(Messages.Menu.use_menu_help, reply_markup=get_menu_keyboard())
         user = get_or_create(bot.get("db"), User, telegram_id=message.from_id, commit=False)
         user.courses.append(get_course_by_name(bot.get("db"), message.text))
         bot.get("db").commit()
+    elif message.text == Buttons.Registration.start:
+        await message.reply(Messages.Menu.use_menu_help, reply_markup=get_menu_keyboard())
         await Menu.in_menu.set()
     else:
         await send_message(message.from_id, Messages.Registration.no_such_course, bot)
@@ -149,6 +152,14 @@ async def cmd_settings(message: aiogram.types.Message, state):
 async def cmd_restart(message: aiogram.types.Message, state):
     await send_message(message.from_id, Messages.Settings.select_course_again, bot)
     await Registration.select_course.set()
+    user = get_or_create(bot.get("db"), User, telegram_id=message.from_id, create=False)
+    user.courses = []
+    courses = get_courses_user_queued(bot.get("db"), message.from_id)
+    for c in courses:
+        c.user_id = None
+        session.add(c)
+    bot.get("db").delete(user)
+    bot.get("db").commit()
     await cmd_start(message)
 
 

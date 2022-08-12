@@ -45,9 +45,11 @@ def get_user_settings(from_user):  # TODO
     pass
 
 
-def get_courses_keyboard(user=None, session=None):
+def get_courses_keyboard(user=None, session=None, additional_buttons=[]):
     """Get keyboard with user courses. If user is None, then return all courses"""
     keyboard = aiogram.types.ReplyKeyboardMarkup()
+    for but in additional_buttons:
+        keyboard.add(aiogram.types.KeyboardButton(but))
     if user is None:
         courses = get_all_courses()
         log.debug(f"Get all courses for user: {user}, courses: {courses}")

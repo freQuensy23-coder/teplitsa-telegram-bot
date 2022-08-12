@@ -7,9 +7,9 @@ from db import get_all_courses
 class Messages:
     @dataclasses.dataclass
     class Registration:
-        start_1 = "Чтобы начать общаться, выберете тот курс, который вы проходите"
-        start_select_course = "Выберете курс из списка на клавиатуре"
-        registration_success = "Спасибо! Теперь мы знаем, что вы проходите курс ..."
+        start_1 = "Чтобы начать общаться, выберете те курс, которые вы проходите."
+        start_select_course = "После того как выбрали все курсы, нажмите на кнопку начать."
+        registration_success = "Спасибо! Теперь мы знаем, что вы проходите курс "
         no_such_course = "Такого курса не существует"
 
     @dataclasses.dataclass
@@ -71,6 +71,10 @@ class Messages:
 
 @dataclasses.dataclass
 class Buttons:
+    @dataclasses.dataclass
+    class Registration:
+        start = "☑️Начать"
+
     @dataclasses.dataclass
     class PairCall:
         global_pair_call_button = "Я хочу на парный созвон кем угодно"
