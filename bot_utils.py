@@ -67,6 +67,12 @@ def get_courses_keyboard(user=None, session=None, additional_buttons=None):
     return keyboard
 
 
+def back_keyboard():
+    keyboard = aiogram.types.ReplyKeyboardMarkup()
+    keyboard.add(aiogram.types.KeyboardButton(Buttons.Menu.menu))
+    return keyboard
+
+
 def get_menu_keyboard():
     keyboard = aiogram.types.ReplyKeyboardMarkup()
     keyboard.add(aiogram.types.KeyboardButton(Buttons.Menu.menu_settings))
