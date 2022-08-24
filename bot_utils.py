@@ -78,6 +78,7 @@ def get_menu_keyboard():
     keyboard.add(aiogram.types.KeyboardButton(Buttons.Menu.menu_settings))
     keyboard.add(aiogram.types.KeyboardButton(Buttons.Menu.menu_notification))
     keyboard.add(aiogram.types.KeyboardButton(Buttons.Menu.menu_pair_call))
+    keyboard.add(aiogram.types.KeyboardButton(Buttons.Menu.menu_feedback))
     return keyboard
 
 

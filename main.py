@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 
+import aiogram.types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor
 
@@ -10,7 +11,7 @@ from aiogram import dispatcher
 import config
 from bot_utils import get_courses_keyboard, get_menu_keyboard, get_notification_keyboard, restart_keyboard, close
 from db import User, get_or_create, engine, get_course_by_name, get_all_courses, Course, get_courses_user_queued
-from states import Registration, Menu
+from states import Registration, Menu, FeedBack, Notification
 from texts import Messages
 
 from notification import GoogleSheetsNotificationController, AbstractNotificationController
@@ -38,6 +39,19 @@ async def cmd_start(message: aiogram.types.Message):
     await Registration.select_course.set()
 
 
+@dp.message_handler(text=["◀ В меню", "/menu"], state="*")
+async def force_menu(message, state):
+    await message.reply(Messages.Menu.use_menu_help, reply_markup=get_menu_keyboard())
+    await Menu.in_menu.set()
+
+
+@dp.message_handler(state=FeedBack.waiting_for_feedback, content_types=aiogram.types.ContentType.ANY)
+async def get_feedback(message: aiogram.types.Message, state):
+    await message.forward(config.tepl_channel_id)
+    await message.reply(Messages.FeedBack.ok, reply_markup=get_menu_keyboard())
+    await Menu.in_menu.set()
+
+
 @dp.message_handler(state=Registration.select_course)
 async def course_selected(message: aiogram.types.Message, state):
     if message.text in [c.name for c in get_all_courses()]:
@@ -57,7 +71,7 @@ async def course_selected(message: aiogram.types.Message, state):
 
 @dp.message_handler(commands=['i_am_administrator'], state='*')
 async def cmd_iam_administrator(message: aiogram.types.Message, state):
-    await send_message(message.from_id, f"Вы успешно зарегестрировались как администратор. Текущее состояние - {state}",
+    await send_message(message.from_id, f"Вы успешно зарегестрировались как администратор.",
                        bot)
 
 
@@ -75,10 +89,14 @@ async def cmd_global_call(message: aiogram.types.Message, state):
         await send_message(message.from_id,
                            Messages.PairCall.pair_call_already_created,
                            bot)
-    else:
+    elif waiting_for_pair_call is None:
         waiting_for_pair_call = message.from_user
         await send_message(message.from_id, Messages.PairCall.pair_call_created_success, bot)
         await message.reply(Messages.PairCall.leave_call_queue_help)
+    else:
+        await send_message(message.from_id, Messages.PairCall.global_pair_call_pair_found(waiting_for_pair_call), bot)
+        await send_message(message.from_id, Messages.PairCall.global_pair_call_pair_found(message.from_user), bot)
+        waiting_for_pair_call = None
 
 
 @dp.message_handler(
@@ -110,7 +128,7 @@ async def choose_course(message: aiogram.types.Message, state):
             await message.reply(Messages.PairCall.pair_call_created_success, reply_markup=get_menu_keyboard())
             await send_message(
                 get_or_create(session=bot.get("db"), create=False, model=User, id=course.user_id).telegram_id,
-                Messages.PairCall.contact_user_to_pair_call(message.from_user), bot)
+                Messages.PairCall.contact_user_to_pair_call(message.from_user, course=course), bot)
     else:
         await message.reply(texts.Messages.PairCall.not_reg_to_such_course, reply_markup=get_menu_keyboard())
         await Menu.in_menu.set()
@@ -139,18 +157,37 @@ async def cmd_kick_call(message: aiogram.types.Message, state):
 async def cmd_notification(message: aiogram.types.Message, state):
     await message.reply(Messages.Notifications.notification_help,
                         reply_markup=get_notification_keyboard(message.from_user))
+    await Notification.change_notification_mode.set()
 
 
-@dp.message_handler(text=["◀ В меню", "/menu"], state="*")
-async def force_menu(message, state):
-    await message.reply(Messages.Menu.use_menu_help, reply_markup=get_menu_keyboard())
+@dp.message_handler(text=texts.Buttons.Notification.on_notification, state=Notification.change_notification_mode)
+async def on_notification(message: aiogram.types.Message, state):
+    user = get_or_create(bot.get("db"), model=User, commit=False, create=False, telegram_id=message.from_id)
+    user.notification_mode = 1
+    bot.get('db').commit()
+    await message.reply("Уведомления включены", reply_markup=get_menu_keyboard())
     await Menu.in_menu.set()
+
+
+@dp.message_handler(text=texts.Buttons.Notification.off_notification, state=Notification.change_notification_mode)
+async def on_notification(message: aiogram.types.Message, state):
+    user = get_or_create(bot.get("db"), model=User, commit=False, create=False, telegram_id=message.from_id)
+    user.notification_mode = 0
+    bot.get('db').commit()
+    await message.reply("Уведомления выключены", reply_markup=get_menu_keyboard())
+    await Menu.in_menu.set()
+
+
+@dp.message_handler(text=texts.Buttons.Menu.menu_feedback, state=Menu.in_menu)
+async def get_feedback(message, state):
+    await message.reply(Messages.FeedBack.help, reply_markup=back_keyboard())
+    await FeedBack.waiting_for_feedback.set()
 
 
 @dp.message_handler(text=texts.Buttons.Menu.menu_settings, state=Menu.in_menu)
 async def cmd_settings(message: aiogram.types.Message, state):
     await message.reply(Messages.Settings.settings_help, reply_markup=restart_keyboard())
-    await Menu.in_settings.set()
+    await Menu.in_menu.set()
 
 
 @dp.message_handler(text=texts.Buttons.Settings.settings_restart, state=Menu.in_settings)
@@ -172,7 +209,7 @@ async def notify(notification_controller: AbstractNotificationController):
     log.info("Started notification")
     sess = bot.get("db")
     for notification in notification_controller.current_notifications():
-        users = sess.query(User).filter().all()  # TODO логика проверки уровня уведомления
+        users = sess.query(User).filter(User.notification_mode == 1).all()
         for user in users:
             log.debug(f"Sending notification to {user.telegram_id}")
             await send_message(user.telegram_id, str(notification), bot)
