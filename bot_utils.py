@@ -77,10 +77,8 @@ def get_menu_keyboard():
 
 def get_notification_keyboard(from_user):
     keyboard = aiogram.types.ReplyKeyboardMarkup()
-    user_settings = get_user_settings(from_user)
-    keyboard.add(aiogram.types.KeyboardButton("✅ Уведомлять о важный событиях"))
-    keyboard.add(aiogram.types.KeyboardButton("✅ Уведомлять о регулярных событиях"))
-    keyboard.add(aiogram.types.KeyboardButton("❌ Отправлять дополнительную информацию о событияъ событиях"))
+    keyboard.add(aiogram.types.KeyboardButton(Buttons.Notification.on_notification))
+    keyboard.add(aiogram.types.KeyboardButton(Buttons.Notification.off_notification))
     keyboard.add(aiogram.types.KeyboardButton(Buttons.Menu.menu))
     return keyboard
 
