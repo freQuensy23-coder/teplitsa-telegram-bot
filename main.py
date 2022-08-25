@@ -187,7 +187,7 @@ async def get_feedback(message, state):
 @dp.message_handler(text=texts.Buttons.Menu.menu_settings, state=Menu.in_menu)
 async def cmd_settings(message: aiogram.types.Message, state):
     await message.reply(Messages.Settings.settings_help, reply_markup=restart_keyboard())
-    await Menu.in_menu.set()
+    await Menu.in_settings.set()
 
 
 @dp.message_handler(text=texts.Buttons.Settings.settings_restart, state=Menu.in_settings)
